@@ -109,7 +109,7 @@ class Board:
     #The algorithm which determines what move the computer makes. How it works is
     #by having the computer make the most optimal move based on its own predictions
     #of what the most optimal move its opponent would make
-    def min_max(self, depth, maximizing_player):
+    def min_max(self, depth, maximizing_player, alpha, beta):
         #base case where the game ends or the algorithm reaches its maximum depth
         if self.game_over() or depth <= 0:
             return self.utility()
@@ -120,9 +120,14 @@ class Board:
             max_score = -math.inf
             for action in self.actions():
                 self.make_move(action[0], action[1], 'X')
-                val = self.min_max(depth - 1, False)
+                val = self.min_max(depth - 1, False, alpha, beta)
                 self.undo_move(action[0], action[1])
+
                 max_score = max(max_score, val)
+                alpha = max(alpha, val)
+                #beta cut off
+                if beta <= alpha:
+                    break
             return max_score
         
         #The computer will simulate the opponents move by having them make the move
@@ -131,9 +136,14 @@ class Board:
             min_score = math.inf
             for action in self.actions():
                 self.make_move(action[0], action[1], 'O')
-                val = self.min_max(depth - 1, True)
+                val = self.min_max(depth - 1, True, alpha, beta)
                 self.undo_move(action[0], action[1])
+
                 min_score = min(min_score, val)
+                beta = min(beta, val)
+                #alpha cut off
+                if beta <= alpha:
+                    break
             return min_score
 
     #This method will call the min-max algorithm above for every move the computer can
@@ -146,28 +156,50 @@ class Board:
         #Tests every possible move to make to see which is the most optimal
         for action in self.actions():
             self.make_move(action[0], action[1], 'X')
-            new_score = self.min_max(9, False)
+            new_score = self.min_max(9, False, 0, 0)
             self.undo_move(action[0], action[1])
-            #print(new_score)
+            
             if new_score > best_score:
-                #print('Test')
                 best_score = new_score
                 best_move = action
 
         return best_move
-
+    
+    #Will be used to determine if the move being made is valid or not
+    def __validate_move(self, x, y):
+        #If one of the coordinates is not a number, then the move is invalid
+        if not x.isnumeric() or not y.isnumeric():
+            print('Input needs to be a number')
+            return False
+        #If the move is not one of the possible actions, then it is invalid
+        move = (int(x), int(y))
+        if move not in self.actions():
+            print('That move cannot be made')
+            return False
+        
+        return True
+    
     #Will simulate a game by having one player make the most optimal moves,
     #and the other make random moves
     def play_game(self):
-        computers_turn = True
+        computers_turn = False
 
         while self.game_over() == False:
             if computers_turn:
                 move = self.best_move()
                 self.make_move(move[0], move[1], 'X')
             else:
-                move = random.choice(self.actions())
-                self.make_move(move[0], move[1], 'O')
+                print('Current state of the game')
+                self.print_out()
+                can_continue = False
+                x = 0
+                y = 0
+
+                while not can_continue:
+                    x = input('Enter the x coordinate for your move:')
+                    y = input('Enter the y coordinate for your move:')
+                    can_continue = self.__validate_move(x, y)
+                self.make_move(int(x), int(y), 'O')
 
             computers_turn = not computers_turn
 
