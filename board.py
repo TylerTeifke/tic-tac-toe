@@ -145,18 +145,60 @@ class Board:
                 if beta <= alpha:
                     break
             return min_score
+        
+    #This algorithm simulates the opponent making suboptimal decisions by calculating the 
+    #probability of each action they can take, and multiplying the value of that action by the
+    #probability of it happening
+    def expectimax(self, depth, maximizing_player):
+        #base case where the game ends or the algorithm reaches its maximum depth
+        if self.game_over() or depth <= 0:
+            return self.utility()
+        
+        #The computer will try to maximize its own score by checking every available
+        #move and picking the most valuable one
+        if maximizing_player:
+            max_score = -math.inf
+            for action in self.actions():
+                self.make_move(action[0], action[1], 'X')
+                val = self.expectimax(depth - 1, False)
+                self.undo_move(action[0], action[1])
+
+                max_score = max(max_score, val)
+            return max_score
+        
+        #The computer will determine the probablitiy of every move the opponent makes,
+        #and divide the final score of each move by its probability, then add up each final score
+        #and return it. This is done to simulate the opponent making non-optimal choices
+        else:
+            expected_value = 0
+            probability = 1 / len(self.actions())
+
+            for action in self.actions():
+                self.make_move(action[0], action[1], 'O')
+                val = self.expectimax(depth - 1, False)
+                self.undo_move(action[0], action[1])
+
+                expected_value += (val * probability)
+            
+            return expected_value
 
     #This method will call the min-max algorithm above for every move the computer can
     #make to see which move is the most optimal.
     #Code gotten from: https://www.datacamp.com/tutorial/minimax-algorithm-for-ai-in-python
-    def best_move(self):
+    def best_move(self, using_min_max):
         best_score = -math.inf
         best_move = None
 
         #Tests every possible move to make to see which is the most optimal
         for action in self.actions():
+            new_score = 0
             self.make_move(action[0], action[1], 'X')
-            new_score = self.min_max(9, False, 0, 0)
+
+            if using_min_max:
+                new_score = self.min_max(9, False, 0, 0)
+            else:
+                new_score = self.expectimax(9, False)
+
             self.undo_move(action[0], action[1])
             
             if new_score > best_score:
@@ -183,10 +225,19 @@ class Board:
     #and the other make random moves
     def play_game(self):
         computers_turn = False
+        using_min_max = False
+        algorithm = ''
+
+        while algorithm != 'M' and algorithm != 'E':
+            print('Choose which algorithm you want the computer to use.')
+            algorithm = input('Type [M] for mini-max or [E] for expectimax:')
+
+        if algorithm == 'M':
+            using_min_max = True
 
         while self.game_over() == False:
             if computers_turn:
-                move = self.best_move()
+                move = self.best_move(using_min_max)
                 self.make_move(move[0], move[1], 'X')
             else:
                 print('Current state of the game')
